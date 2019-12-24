@@ -1,5 +1,12 @@
 table! {
-    tenants (id) {
+    organization_users (organization_id, user_id) {
+        organization_id -> Uuid,
+        user_id -> Uuid,
+    }
+}
+
+table! {
+    organizations (id) {
         id -> Uuid,
         name -> Text,
     }
@@ -11,13 +18,14 @@ table! {
         name -> Text,
         email -> Text,
         password -> Text,
-        tenant_id -> Uuid,
     }
 }
 
-joinable!(users -> tenants (tenant_id));
+joinable!(organization_users -> organizations (organization_id));
+joinable!(organization_users -> users (user_id));
 
 allow_tables_to_appear_in_same_query!(
-    tenants,
+    organization_users,
+    organizations,
     users,
 );

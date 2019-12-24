@@ -1,4 +1,4 @@
-create table tenants
+create table organizations
 (
     id   uuid primary key not null,
     name text             not null
@@ -6,10 +6,13 @@ create table tenants
 
 create table users
 (
-    id        uuid primary key not null,
-    name      text             not null,
-    email     text             not null,
-    password  text             not null,
-    tenant_id uuid             not null references tenants (id),
-    unique (email, tenant_id)
+    id       uuid primary key not null,
+    name     text             not null
+);
+
+create table organization_users
+(
+    organization_id uuid not null references organizations (id),
+    user_id   uuid not null references users (id),
+    primary key (organization_id, user_id)
 );

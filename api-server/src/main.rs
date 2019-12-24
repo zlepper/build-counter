@@ -4,15 +4,21 @@
 extern crate diesel_migrations;
 #[macro_use]
 extern crate diesel;
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate serde;
 
-use rocket::{get, routes, Rocket};
+use rocket::response::Responder;
+use rocket::{get, routes, Request, Response, Rocket};
 use rocket_contrib::database;
 
 mod models;
 mod schema;
+mod user_management;
 
 #[database("main_db")]
-struct MainDbConn(diesel::PgConnection);
+pub struct MainDbConn(diesel::PgConnection);
 
 #[get("/")]
 fn index(db: MainDbConn) -> &'static str {
@@ -28,6 +34,8 @@ fn get_rocket() -> Rocket {
 embed_migrations!("migrations");
 
 fn main() {
+    env_logger::init();
+
     let r = get_rocket();
 
     let conn = MainDbConn::get_one(&r).expect("Failed to get connection instance");
