@@ -1,11 +1,13 @@
 use crate::schema::*;
+use crate::utils::ToOk;
 use diesel::prelude::*;
 use diesel::ExpressionMethods;
-use rocket::http::Status;
+use rocket::http::{ContentType, Status};
 use rocket::response::status::BadRequest;
 use rocket::response::Responder;
 use rocket::{response, Request, Response};
 use rocket_contrib::json::Json;
+use std::io::Cursor;
 use uuid::Uuid;
 
 #[derive(Queryable, Associations, Identifiable, Debug, Eq, PartialEq)]
@@ -62,9 +64,18 @@ impl<'r> Responder<'r> for Errors {
             Errors::InternalError(message) => ErrorResponse::new(500, message),
         };
 
-        Json(&res_body).respond_to(request).map(|mut res| {
-            res.set_status(Status::new(res_body.status, &res_body.message));
-            res
-        })
+        let body = serde_json::to_string(&res_body);
+        match body {
+            Err(e) => {
+                error!("Failed to serialize body to json: {}", e);
+                Err(Status::InternalServerError)
+            }
+            Ok(b) => Response::build()
+                .status(Status::from_code(res_body.status).unwrap_or(Status::InternalServerError))
+                .header(ContentType::JSON)
+                .sized_body(Cursor::new(b))
+                .finalize()
+                .ok(),
+        }
     }
 }

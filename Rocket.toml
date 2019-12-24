@@ -1,4 +1,5 @@
 [development]
+port = 9000
 
 [global.databases]
 main_db = {url = "postgres://postgres:password@localhost"}
