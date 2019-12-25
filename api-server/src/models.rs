@@ -2,12 +2,6 @@ use crate::schema::*;
 use crate::utils::ToOk;
 use diesel::prelude::*;
 use diesel::ExpressionMethods;
-use rocket::http::{ContentType, Status};
-use rocket::response::status::BadRequest;
-use rocket::response::Responder;
-use rocket::{response, Request, Response};
-use rocket_contrib::json::Json;
-use std::io::Cursor;
 use uuid::Uuid;
 
 #[derive(Queryable, Associations, Identifiable, Debug, Eq, PartialEq)]
@@ -32,50 +26,30 @@ pub struct OrganizationUser {
     pub organization_id: Uuid,
 }
 
-pub struct NewUser<'a> {
-    pub name: &'a str,
-    pub email: &'a str,
-    pub password: &'a str,
+#[derive(Queryable, Debug, Eq, PartialEq)]
+pub struct GitHubLoginSessionInformation {
+    pub id: Uuid,
+    pub session_id: Uuid,
+    pub csrf_token: String,
+    pub pkce_verifier: String,
 }
 
-#[derive(Debug)]
-pub enum Errors {
-    BadRequest(String),
-    InternalError(String),
+#[derive(Insertable)]
+#[table_name = "github_login_session_information"]
+pub struct NewGitHubLoginSessionInformation<'a, 'b> {
+    pub id: Uuid,
+    pub session_id: Uuid,
+    pub csrf_token: &'a str,
+    pub pkce_verifier: &'b str,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-struct ErrorResponse {
-    pub message: String,
-    pub status: u16,
-}
-
-impl ErrorResponse {
-    pub fn new(status: u16, message: String) -> Self {
-        ErrorResponse { message, status }
-    }
-}
-
-impl<'r> Responder<'r> for Errors {
-    fn respond_to(self, request: &Request) -> response::Result<'r> {
-        let res_body = match self {
-            Errors::BadRequest(message) => ErrorResponse::new(400, message),
-            Errors::InternalError(message) => ErrorResponse::new(500, message),
-        };
-
-        let body = serde_json::to_string(&res_body);
-        match body {
-            Err(e) => {
-                error!("Failed to serialize body to json: {}", e);
-                Err(Status::InternalServerError)
-            }
-            Ok(b) => Response::build()
-                .status(Status::from_code(res_body.status).unwrap_or(Status::InternalServerError))
-                .header(ContentType::JSON)
-                .sized_body(Cursor::new(b))
-                .finalize()
-                .ok(),
+impl<'a, 'b> NewGitHubLoginSessionInformation<'a, 'b> {
+    pub fn new(session_id: Uuid, csrf_token: &'a str, pkce_verifier: &'b str) -> Self {
+        NewGitHubLoginSessionInformation {
+            id: Uuid::new_v4(),
+            session_id,
+            csrf_token,
+            pkce_verifier,
         }
     }
 }
