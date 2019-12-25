@@ -1,8 +1,9 @@
+use crate::github_client_info::GitHubClientInfo;
 use crate::models::{GitHubLoginSessionInformation, NewGitHubLoginSessionInformation};
 use crate::schema::github_login_session_information::dsl as github_login_session_informations_dsl;
 use crate::schema::github_login_session_information::table as github_login_session_information_table;
 use crate::session::Session;
-use crate::{GitHubClientInfo, MainDbConn};
+use crate::MainDbConn;
 use diesel::prelude::*;
 use oauth2::{
     AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, PkceCodeChallenge, RedirectUrl,
@@ -26,7 +27,7 @@ impl UserManagementMount for Rocket {
 
 #[get("/start-gh-login")]
 fn start_login(
-    github_info: State<GitHubClientInfo>,
+    github_info: GitHubClientInfo,
     session: Session,
     conn: MainDbConn,
 ) -> Result<Redirect, Status> {

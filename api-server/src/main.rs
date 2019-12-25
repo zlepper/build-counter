@@ -9,6 +9,7 @@ extern crate log;
 #[macro_use]
 extern crate serde;
 
+use crate::github_client_info::GitHubClientInfoFairing;
 use crate::user_management::UserManagementMount;
 use crate::utils::ToOk;
 use oauth2::basic::BasicClient;
@@ -21,7 +22,9 @@ use rocket::response::Responder;
 use rocket::{get, routes, Request, Response, Rocket};
 use rocket_contrib::database;
 
+mod db;
 mod error_response;
+mod github_client_info;
 mod models;
 mod schema;
 mod session;
@@ -30,62 +33,6 @@ mod utils;
 
 #[database("main_db")]
 pub struct MainDbConn(diesel::PgConnection);
-
-pub struct GitHubClientInfo {
-    pub oauth_client: BasicClient,
-}
-
-struct GitHubClientInfoFairing;
-
-impl Fairing for GitHubClientInfoFairing {
-    fn info(&self) -> Info {
-        Info {
-            name: "GitHubClientInfo",
-            kind: Kind::Attach,
-        }
-    }
-
-    fn on_attach(&self, rocket: Rocket) -> Result<Rocket, Rocket> {
-        let client_id = rocket.config().get_string("github_client_id");
-        let client_secret = rocket.config().get_string("github_client_secret");
-        let main_host = rocket
-            .config()
-            .get_string("host")
-            .unwrap_or("http://localhost".to_string());
-        let port = rocket.config().port;
-
-        match (client_id, client_secret) {
-            (Err(e), _) => {
-                error!("github_client_id was not set: {}", e);
-                Err(rocket)
-            }
-            (_, Err(e)) => {
-                error!("github_client_secret was not set: {}", e);
-                Err(rocket)
-            }
-            (Ok(c_id), Ok(c_secret)) => rocket
-                .manage(GitHubClientInfo {
-                    oauth_client: BasicClient::new(
-                        ClientId::new(c_id),
-                        Some(ClientSecret::new(c_secret)),
-                        AuthUrl::new("https://github.com/login/oauth/authorize".to_string())
-                            .unwrap(),
-                        Some(
-                            TokenUrl::new(
-                                "https://github.com/login/oauth/access_token".to_string(),
-                            )
-                            .unwrap(),
-                        ),
-                    )
-                    .set_redirect_url(
-                        RedirectUrl::new(format!("{}:{}/gh-oauth-callback", main_host, port))
-                            .unwrap(),
-                    ),
-                })
-                .ok(),
-        }
-    }
-}
 
 fn get_rocket() -> Rocket {
     rocket::ignite()
