@@ -1,9 +1,7 @@
 use crate::utils::ToOk;
 use rocket::http::{ContentType, Status};
-use rocket::response::status::BadRequest;
 use rocket::response::Responder;
 use rocket::{response, Request, Response};
-use rocket_contrib::json::Json;
 use std::io::Cursor;
 
 #[derive(Debug)]
@@ -26,7 +24,7 @@ impl ErrorResponse {
 }
 
 impl<'r> Responder<'r> for Errors {
-    fn respond_to(self, request: &Request) -> response::Result<'r> {
+    fn respond_to(self, _: &Request) -> response::Result<'r> {
         let res_body = match self {
             Errors::BadRequest(message) => ErrorResponse::new(400, message),
             Errors::InternalError(message) => ErrorResponse::new(500, message),

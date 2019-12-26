@@ -5,22 +5,17 @@ use crate::schema::github_login_session_information::table as github_login_sessi
 use crate::session::Session;
 use crate::MainDbConn;
 use diesel::prelude::*;
-use oauth2::{
-    AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, PkceCodeChallenge, RedirectUrl,
-    Scope, TokenResponse, TokenUrl,
-};
-use rocket::http::{Cookie, Cookies, Status};
+use oauth2::{CsrfToken, PkceCodeChallenge};
+use rocket::http::{Status};
 use rocket::response::Redirect;
-use rocket::{get, routes, Rocket, State};
-use rocket_contrib::json::Json;
-use uuid::Uuid;
+use rocket::{get, routes, Rocket};
 
 pub trait UserManagementMount {
     fn mount_user_management(self) -> Self;
 }
 
 impl UserManagementMount for Rocket {
-    fn mount_user_management(mut self) -> Self {
+    fn mount_user_management(self) -> Self {
         self.mount("/", routes![start_login, finish_github_login])
     }
 }

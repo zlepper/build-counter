@@ -3,8 +3,7 @@ use api_server_macros::InjectedResource;
 use oauth2::basic::BasicClient;
 use oauth2::{AuthUrl, ClientId, ClientSecret, RedirectUrl, TokenUrl};
 use rocket::fairing::{Fairing, Info, Kind};
-use rocket::request::FromRequest;
-use rocket::{http::Status, Outcome, Request, Rocket, State};
+use rocket::{Outcome, Rocket, State};
 
 #[derive(Clone, InjectedResource)]
 pub struct GitHubClientInfo {

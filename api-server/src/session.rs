@@ -1,5 +1,5 @@
-use rocket::http::{ContentType, Status};
-use rocket::http::{Cookie, Cookies};
+use rocket::http::{Status};
+use rocket::http::{Cookie};
 use rocket::request::FromRequest;
 use rocket::{Outcome, Request};
 use uuid::Uuid;

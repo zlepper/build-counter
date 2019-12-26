@@ -28,10 +28,13 @@ pub fn injected_resource(input: TokenStream) -> TokenStream {
     expanded.into()
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
+#[proc_macro]
+pub fn static_resources(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    println!("{:?}", input);
+
+    let result = quote!{#input};
+
+    result.into()
 }

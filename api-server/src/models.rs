@@ -1,7 +1,4 @@
 use crate::schema::*;
-use crate::utils::ToOk;
-use diesel::prelude::*;
-use diesel::ExpressionMethods;
 use uuid::Uuid;
 
 #[derive(Queryable, Associations, Identifiable, Debug, Eq, PartialEq)]
