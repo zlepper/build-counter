@@ -8,6 +8,7 @@ use std::io::Cursor;
 pub enum Errors {
     BadRequest(String),
     InternalError(String),
+    Unauthorized,
 }
 
 impl Errors {
@@ -39,6 +40,7 @@ impl<'r> Responder<'r> for Errors {
         let res_body = match self {
             Errors::BadRequest(message) => ErrorResponse::new(400, message),
             Errors::InternalError(message) => ErrorResponse::new(500, message),
+            Errors::Unauthorized => ErrorResponse::new(401, "Unauthorized".to_string()),
         };
 
         let accepted = request

@@ -42,6 +42,13 @@ pub struct GitHubUserInfo {
     pub user_id: Uuid,
 }
 
+#[derive(Queryable, AsChangeset, Insertable, Debug, Eq, PartialEq, Clone)]
+#[table_name = "system_data"]
+pub struct SystemData {
+    pub key: String,
+    pub content: Vec<u8>,
+}
+
 #[derive(AsChangeset)]
 #[table_name = "github_user_info"]
 pub struct GitHubUserInfoUpdate {

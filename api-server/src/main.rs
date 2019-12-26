@@ -10,6 +10,7 @@ extern crate log;
 extern crate serde;
 
 use crate::github_client_info::GitHubClientInfoFairing;
+use crate::jwt_secret::JwtSecret;
 use crate::user_management::UserManagementMount;
 use crate::utils::ToOk;
 use api_server_macros::InjectedResource;
@@ -21,6 +22,8 @@ use std::borrow::Borrow;
 mod db;
 mod error_response;
 mod github_client_info;
+mod jwt;
+mod jwt_secret;
 mod models;
 mod schema;
 mod session;
@@ -65,6 +68,7 @@ fn get_rocket() -> Rocket {
         .attach(MainDbConn::fairing())
         .attach(GitHubClientInfoFairing)
         .attach(FrontendUrl::fairing())
+        .attach(JwtSecret::fairing())
         .mount_user_management()
 }
 

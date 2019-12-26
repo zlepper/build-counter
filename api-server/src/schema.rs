@@ -34,6 +34,13 @@ table! {
 }
 
 table! {
+    system_data (key) {
+        key -> Text,
+        content -> Bytea,
+    }
+}
+
+table! {
     users (id) {
         id -> Uuid,
     }
@@ -48,5 +55,6 @@ allow_tables_to_appear_in_same_query!(
     github_user_info,
     organization_users,
     organizations,
+    system_data,
     users,
 );

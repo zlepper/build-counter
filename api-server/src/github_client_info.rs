@@ -14,6 +14,8 @@ pub struct GitHubUser {
     pub name: String,
 }
 
+pub struct GitHubUserOrg {}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GitHubResponseError {
     pub message: String,
@@ -69,6 +71,23 @@ impl GitHubClientInfo {
                     e.message
                 })
         }
+    }
+
+    pub fn get_user_orgs(&self, auth_token: &str) -> Result<Vec<GitHubUserOrg>, String> {
+        let mut response = reqwest::Client::new()
+            .get("https://api.github.com/user/orgs")
+            .bearer_auth(auth_token)
+            .send()
+            .map_err(|e| {
+                error!("Failed to request orgs for current user: {}", e);
+                e.to_string()
+            })?;
+
+        let body = response.text().to_err_string()?;
+
+        info!("User org list: {}", body);
+
+        Ok(vec![])
     }
 }
 

@@ -7,6 +7,7 @@ use crate::schema::github_login_session_information::dsl as github_login_session
 use crate::schema::github_login_session_information::table as github_login_session_information_table;
 use crate::session::Session;
 use crate::utils::ToInternalStatusError;
+use crate::JwtSecret;
 use crate::{FrontendUrl, MainDbConn};
 use diesel::prelude::*;
 use oauth2::reqwest::http_client;
@@ -70,6 +71,7 @@ pub fn finish_github_login(
     github_info: GitHubClientInfo,
     code: String,
     state: String,
+    jwt_secret: JwtSecret,
 ) -> Result<Redirect, Errors> {
     info!("code: '{}', state: '{}'", code, state);
 

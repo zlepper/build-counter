@@ -40,3 +40,8 @@ create table github_user_info
 
 create index github_user_info_idx_user_id on github_user_info (user_id);
 create index github_user_info_idx_for_finding_users on github_user_info (login, name, email);
+
+create table system_data (
+    key text not null primary key,
+    content bytea not null
+);

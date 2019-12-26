@@ -61,7 +61,7 @@ impl UserRepository for RealUserRepository {
                                 .values(&user_info)
                                 .on_conflict((crate::schema::github_user_info::dsl::id))
                                 .do_update()
-                                .set(&user_info.clone().into())
+                                .set(GitHubUserInfoUpdate::from(user_info.clone()))
                                 .returning(crate::schema::github_user_info::dsl::user_id)
                                 .get_result(&*self.conn)?;
 
@@ -83,7 +83,7 @@ impl UserRepository for RealUserRepository {
                             Ok(u)
                         }
                     }
-                    Some(u) => {
+                    Some(_) => {
                         info!("User already exists, updating: {:?}", user);
                         let user_id: Uuid = diesel::update(
                             crate::schema::github_user_info::dsl::github_user_info
