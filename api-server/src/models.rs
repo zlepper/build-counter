@@ -1,21 +1,19 @@
+use crate::github_client_info::GitHubUser;
 use crate::schema::*;
 use uuid::Uuid;
 
-#[derive(Queryable, Associations, Identifiable, Debug, Eq, PartialEq)]
+#[derive(Queryable, Associations, Identifiable, Debug, Eq, PartialEq, Clone)]
 pub struct Organization {
     pub id: Uuid,
     pub name: String,
 }
 
-#[derive(Queryable, Associations, Identifiable, Debug, Eq, PartialEq)]
+#[derive(Queryable, Insertable, Associations, Identifiable, Debug, Eq, PartialEq, Clone)]
 pub struct User {
     pub id: Uuid,
-    pub name: String,
-    pub email: String,
-    pub password: String,
 }
 
-#[derive(Queryable, Associations, Debug, Eq, PartialEq)]
+#[derive(Queryable, Associations, Debug, Eq, PartialEq, Clone)]
 #[belongs_to(Organization)]
 #[belongs_to(User)]
 pub struct OrganizationUser {
@@ -23,12 +21,55 @@ pub struct OrganizationUser {
     pub organization_id: Uuid,
 }
 
-#[derive(Queryable, Debug, Eq, PartialEq)]
+#[derive(Queryable, Debug, Eq, PartialEq, Clone)]
 pub struct GitHubLoginSessionInformation {
     pub id: Uuid,
     pub session_id: Uuid,
     pub csrf_token: String,
     pub pkce_verifier: String,
+}
+
+#[derive(Queryable, Insertable, Debug, Eq, PartialEq, Associations, Clone)]
+#[belongs_to(User)]
+#[table_name = "github_user_info"]
+pub struct GitHubUserInfo {
+    pub id: i32,
+    pub login: String,
+    pub name: String,
+    pub email: Option<String>,
+    pub avatar_url: String,
+    pub user_id: Uuid,
+}
+
+#[derive(AsChangeset)]
+#[table_name = "github_user_info"]
+pub struct GitHubUserInfoUpdate {
+    pub login: String,
+    pub name: String,
+    pub email: Option<String>,
+    pub avatar_url: String,
+}
+
+impl From<GitHubUserInfo> for GitHubUserInfoUpdate {
+    fn from(u: GitHubUserInfo) -> Self {
+        GitHubUserInfoUpdate {
+            login: u.login,
+            name: u.name,
+            email: u.email,
+            avatar_url: u.avatar_url,
+        }
+    }
+}
+
+impl From<GitHubUser> for GitHubUserInfoUpdate {
+    fn from(u: GitHubUser) -> Self {
+        GitHubUserInfoUpdate {
+            login: u.login,
+            name: u.name,
+            email: u.email,
+            avatar_url: u.avatar_url,
+        }
+    }
 }
 
 #[derive(Insertable)]

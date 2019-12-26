@@ -47,3 +47,16 @@ impl<T, E> ToErrString<T> for Result<T, E>
         self.map_err(|e| e.to_string())
     }
 }
+
+pub trait ToInternalStatusError<T, E>  {
+    fn to_internal_err(self, log: impl FnOnce(E) -> ()) -> Result<T, ::rocket::http::Status>;
+}
+
+impl<T, E> ToInternalStatusError<T, E> for Result<T, E> {
+    fn to_internal_err(self, log: impl FnOnce(E) -> ()) -> Result<T, ::rocket::http::Status> {
+        self.map_err(|e| {
+            log(e);
+            ::rocket::http::Status::InternalServerError
+        })
+    }
+}

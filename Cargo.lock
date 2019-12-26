@@ -23,6 +23,7 @@ dependencies = [
  "env_logger 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "oauth2 3.0.0-alpha.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "reqwest 0.9.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "rocket 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rocket_contrib 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",

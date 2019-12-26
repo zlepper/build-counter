@@ -1,7 +1,12 @@
 use crate::models::{GitHubLoginSessionInformation, NewGitHubLoginSessionInformation};
-use diesel::prelude::*;
-use uuid::Uuid;
 use crate::utils::*;
+use crate::MainDbConn;
+use api_server_macros::Dependency;
+use diesel::prelude::*;
+use rocket::http::Status;
+use rocket::request::FromRequest;
+use rocket::{Outcome, Request};
+use uuid::Uuid;
 
 pub trait SessionRepository {
     // Should create a new session for a github login
@@ -18,13 +23,26 @@ pub trait SessionRepository {
         session_id: Uuid,
         csrf_token: &str,
     ) -> Result<Option<GitHubLoginSessionInformation>, String>;
+
+    fn delete_login_session(&self, id: Uuid) -> Result<(), String>;
 }
 
-struct RealSessionRepository<'a> {
-    conn: &'a diesel::PgConnection,
+impl<'a, 'r> FromRequest<'a, 'r> for Box<dyn SessionRepository> {
+    type Error = ();
+
+    fn from_request(request: &'a Request<'r>) -> Outcome<Self, (Status, Self::Error), ()> {
+        let instance = request.guard::<RealSessionRepository>()?;
+
+        Outcome::Success(Box::new(instance))
+    }
 }
 
-impl<'a> SessionRepository for RealSessionRepository<'a> {
+#[derive(Dependency)]
+pub struct RealSessionRepository {
+    conn: MainDbConn,
+}
+
+impl SessionRepository for RealSessionRepository {
     fn create_session_for_github_login(
         &self,
         session_id: Uuid,
@@ -35,7 +53,7 @@ impl<'a> SessionRepository for RealSessionRepository<'a> {
 
         diesel::insert_into(crate::schema::github_login_session_information::table)
             .values(info)
-            .execute(self.conn)
+            .execute(&*self.conn)
             .to_err_string()?;
 
         Ok(())
@@ -46,17 +64,27 @@ impl<'a> SessionRepository for RealSessionRepository<'a> {
         session_id: Uuid,
         csrf_token: &str,
     ) -> Result<Option<GitHubLoginSessionInformation>, String> {
+        crate::schema::github_login_session_information::dsl::github_login_session_information
+            .filter(
+                crate::schema::github_login_session_information::dsl::session_id
+                    .eq(session_id)
+                    .and(
+                        crate::schema::github_login_session_information::dsl::csrf_token
+                            .eq(csrf_token),
+                    ),
+            )
+            .first(&*self.conn)
+            .to_optional()
+            .to_err_string()
+    }
+
+    fn delete_login_session(&self, id: Uuid) -> Result<(), String> {
+        diesel::delete(
             crate::schema::github_login_session_information::dsl::github_login_session_information
-                .filter(
-                    crate::schema::github_login_session_information::dsl::session_id
-                        .eq(session_id)
-                        .and(
-                            crate::schema::github_login_session_information::dsl::csrf_token
-                                .eq(csrf_token),
-                        ),
-                )
-                .first(self.conn)
-                .to_optional()
-                .to_err_string()
+                .filter(crate::schema::github_login_session_information::dsl::id.eq(id)),
+        )
+        .execute(&*self.conn)
+        .to_err_string()
+        .map(|_| ())
     }
 }

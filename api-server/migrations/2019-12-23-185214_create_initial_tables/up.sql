@@ -6,8 +6,7 @@ create table organizations
 
 create table users
 (
-    id   uuid primary key not null,
-    name text             not null
+    id   uuid primary key not null
 );
 
 create table organization_users
@@ -26,3 +25,16 @@ create table github_login_session_information
 );
 
 create index github_login_session_information_idx on github_login_session_information (session_id, csrf_token);
+
+create table github_user_info(
+    id integer not null primary key,
+    login text not null,
+    name text not null,
+    email text,
+    avatar_url text not null,
+    user_id uuid not null references users(id)
+);
+
+
+create index github_user_info_idx_user_id on github_user_info(user_id);
+create index github_user_info_idx_for_finding_users on github_user_info(login, name, email);
