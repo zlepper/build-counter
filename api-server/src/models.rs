@@ -27,6 +27,7 @@ pub struct GitHubLoginSessionInformation {
     pub session_id: Uuid,
     pub csrf_token: String,
     pub pkce_verifier: String,
+    pub return_url: String,
 }
 
 #[derive(Queryable, Insertable, Debug, Eq, PartialEq, Associations, Clone)]
@@ -74,20 +75,27 @@ impl From<GitHubUser> for GitHubUserInfoUpdate {
 
 #[derive(Insertable)]
 #[table_name = "github_login_session_information"]
-pub struct NewGitHubLoginSessionInformation<'a, 'b> {
+pub struct NewGitHubLoginSessionInformation<'a, 'b, 'c> {
     pub id: Uuid,
     pub session_id: Uuid,
     pub csrf_token: &'a str,
     pub pkce_verifier: &'b str,
+    pub return_url: &'c str,
 }
 
-impl<'a, 'b> NewGitHubLoginSessionInformation<'a, 'b> {
-    pub fn new(session_id: Uuid, csrf_token: &'a str, pkce_verifier: &'b str) -> Self {
+impl<'a, 'b, 'c> NewGitHubLoginSessionInformation<'a, 'b, 'c> {
+    pub fn new(
+        session_id: Uuid,
+        csrf_token: &'a str,
+        pkce_verifier: &'b str,
+        return_url: &'c str,
+    ) -> Self {
         NewGitHubLoginSessionInformation {
             id: Uuid::new_v4(),
             session_id,
             csrf_token,
             pkce_verifier,
+            return_url,
         }
     }
 }

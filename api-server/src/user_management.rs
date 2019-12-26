@@ -1,5 +1,6 @@
 use crate::db::sessions::SessionRepository;
 use crate::db::users::UserRepository;
+use crate::error_response::Errors;
 use crate::github_client_info::GitHubClientInfo;
 use crate::models::{GitHubLoginSessionInformation, NewGitHubLoginSessionInformation};
 use crate::schema::github_login_session_information::dsl as github_login_session_informations_dsl;
@@ -25,12 +26,19 @@ impl UserManagementMount for Rocket {
     }
 }
 
-#[get("/start-gh-login")]
+#[get("/start-gh-login?<return_url>")]
 fn start_login(
     github_info: GitHubClientInfo,
     session: Session,
     repo: Box<dyn SessionRepository>,
-) -> Result<Redirect, Status> {
+    return_url: String,
+    frontend_url: FrontendUrl,
+) -> Result<Redirect, Errors> {
+    if !return_url.starts_with(&frontend_url.0) {
+        error!("Tried to request login without valid return url");
+        return Err(Errors::bad_request("Invalid return_url"));
+    }
+
     let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
 
     // Generate the full authorization URL.
@@ -43,14 +51,13 @@ fn start_login(
 
     let session_id = session.id;
 
-    let csrf_entry = NewGitHubLoginSessionInformation::new(
+    repo.create_session_for_github_login(
         session_id,
         csrf_token.secret(),
         pkce_verifier.secret(),
-    );
-
-    repo.create_session_for_github_login(session_id, csrf_token.secret(), pkce_verifier.secret())
-        .to_internal_err(|e| error!("Failed to insert csrf token: {}", e))?;
+        &return_url,
+    )
+    .to_internal_err(|e| error!("Failed to insert csrf token: {}", e))?;
 
     Ok(Redirect::to(auth_url.to_string()))
 }
@@ -61,10 +68,9 @@ pub fn finish_github_login(
     session_repo: Box<dyn SessionRepository>,
     user_repo: Box<dyn UserRepository>,
     github_info: GitHubClientInfo,
-    frontend_url: FrontendUrl,
     code: String,
     state: String,
-) -> Result<Redirect, Status> {
+) -> Result<Redirect, Errors> {
     info!("code: '{}', state: '{}'", code, state);
 
     let existing_csrf_token = session_repo
@@ -72,7 +78,7 @@ pub fn finish_github_login(
         .to_internal_err(|e| error!("Failed to load existing csrf token: {}", e))?;
 
     match existing_csrf_token {
-        None => Err(Status::BadRequest),
+        None => Err(Errors::bad_request("Invalid csrf token")),
         Some(token) => {
             let verifier = PkceCodeVerifier::new(token.pkce_verifier.clone());
             let token_response = github_info
@@ -82,7 +88,7 @@ pub fn finish_github_login(
                 .request(http_client)
                 .map_err(|e| {
                     error!("Failed to exchange for github token: {}", e);
-                    Status::InternalServerError
+                    Errors::internal_error("GitHub connection failed")
                 })?;
 
             session_repo
@@ -101,7 +107,7 @@ pub fn finish_github_login(
 
             debug!("Found user in system: {:?}", system_user);
 
-            Ok(Redirect::to(frontend_url.0))
+            Ok(Redirect::to(token.return_url))
         }
     }
 }

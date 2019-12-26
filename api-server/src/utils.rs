@@ -30,7 +30,7 @@ impl<T> ToOptional<T> for QueryResult<T> {
         match self {
             Err(e) if e == diesel::NotFound => Ok(None),
             Err(e) => Err(e),
-            Ok(v) => Ok(Some(v))
+            Ok(v) => Ok(Some(v)),
         }
     }
 }
@@ -41,22 +41,30 @@ pub trait ToErrString<T> {
 }
 
 impl<T, E> ToErrString<T> for Result<T, E>
-    where E: ToString
+where
+    E: ToString,
 {
     fn to_err_string(self) -> Result<T, String> {
         self.map_err(|e| e.to_string())
     }
 }
 
-pub trait ToInternalStatusError<T, E>  {
-    fn to_internal_err(self, log: impl FnOnce(E) -> ()) -> Result<T, ::rocket::http::Status>;
+pub trait ToInternalStatusError<T, E> {
+    fn to_internal_err(self, log: impl FnOnce(E) -> ())
+        -> Result<T, crate::error_response::Errors>;
 }
 
-impl<T, E> ToInternalStatusError<T, E> for Result<T, E> {
-    fn to_internal_err(self, log: impl FnOnce(E) -> ()) -> Result<T, ::rocket::http::Status> {
+impl<T, E> ToInternalStatusError<T, E> for Result<T, E>
+where
+    E: ToString + Clone,
+{
+    fn to_internal_err(
+        self,
+        log: impl FnOnce(E) -> (),
+    ) -> Result<T, crate::error_response::Errors> {
         self.map_err(|e| {
-            log(e);
-            ::rocket::http::Status::InternalServerError
+            log(e.clone());
+            crate::error_response::Errors::InternalError(e.to_string())
         })
     }
 }

@@ -15,6 +15,7 @@ pub trait SessionRepository {
         session_id: Uuid,
         csrf_token: &str,
         pkce_verifier: &str,
+        return_url: &str,
     ) -> Result<(), String>;
     // Should attempt to load an existing session if it exists.
     // If it doesn't, the implementation should return Ok(None)
@@ -48,8 +49,14 @@ impl SessionRepository for RealSessionRepository {
         session_id: Uuid,
         csrf_token: &str,
         pkce_verifier: &str,
+        return_url: &str,
     ) -> Result<(), String> {
-        let info = NewGitHubLoginSessionInformation::new(session_id, csrf_token, pkce_verifier);
+        let info = NewGitHubLoginSessionInformation::new(
+            session_id,
+            csrf_token,
+            pkce_verifier,
+            return_url,
+        );
 
         diesel::insert_into(crate::schema::github_login_session_information::table)
             .values(info)

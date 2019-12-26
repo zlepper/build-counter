@@ -4,6 +4,7 @@ table! {
         session_id -> Uuid,
         csrf_token -> Text,
         pkce_verifier -> Text,
+        return_url -> Text,
     }
 }
 
