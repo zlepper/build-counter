@@ -7,15 +7,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
-    - name: Install nightly
-      run: rustup toolchain install nightly
+    - name: Prepare
+      run: | 
+        rustup toolchain install nightly
+        sudo apt install libpq-dev
     - name: Build
       run: cargo +nightly build --release
   test:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
-    - name: Install nightly
-      run: rustup toolchain install nightly
+    - name: Prepare
+      run: | 
+        rustup toolchain install nightly
+        sudo apt install libpq-dev
     - name: Run tests
       run: cargo +nightly test
