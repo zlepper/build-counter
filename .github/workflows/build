@@ -1,0 +1,21 @@
+name: Test and build
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Install nightly
+      run: rustup toolchain install nightly
+    - name: Build
+      run: cargo +nightly build --release
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Install nightly
+      run: rustup toolchain install nightly
+    - name: Run tests
+      run: cargo +nightly test
