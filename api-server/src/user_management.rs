@@ -2,20 +2,14 @@ use crate::db::sessions::SessionRepository;
 use crate::db::users::UserRepository;
 use crate::error_response::Errors;
 use crate::github_client_info::GitHubClientInfo;
-use crate::models::{GitHubLoginSessionInformation, NewGitHubLoginSessionInformation};
-use crate::schema::github_login_session_information::dsl as github_login_session_informations_dsl;
-use crate::schema::github_login_session_information::table as github_login_session_information_table;
 use crate::session::Session;
 use crate::utils::ToInternalStatusError;
+use crate::FrontendUrl;
 use crate::JwtSecret;
-use crate::{FrontendUrl, MainDbConn};
-use diesel::prelude::*;
 use oauth2::reqwest::http_client;
 use oauth2::{AuthorizationCode, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, TokenResponse};
-use rocket::http::Status;
 use rocket::response::Redirect;
 use rocket::{get, routes, Rocket};
-use serde::Serialize;
 
 pub trait UserManagementMount {
     fn mount_user_management(self) -> Self;
@@ -35,7 +29,7 @@ fn start_login(
     return_url: String,
     frontend_url: FrontendUrl,
 ) -> Result<Redirect, Errors> {
-    if !return_url.starts_with(&frontend_url.0) {
+    if !return_url.starts_with(frontend_url.value()) {
         error!("Tried to request login without valid return url");
         return Err(Errors::bad_request("Invalid return_url"));
     }

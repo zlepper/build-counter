@@ -59,7 +59,7 @@ impl UserRepository for RealUserRepository {
                         let inserted_user_id =
                             diesel::insert_into(crate::schema::github_user_info::table)
                                 .values(&user_info)
-                                .on_conflict((crate::schema::github_user_info::dsl::id))
+                                .on_conflict(crate::schema::github_user_info::dsl::id)
                                 .do_update()
                                 .set(GitHubUserInfoUpdate::from(user_info.clone()))
                                 .returning(crate::schema::github_user_info::dsl::user_id)
@@ -90,7 +90,7 @@ impl UserRepository for RealUserRepository {
                                 .filter(crate::schema::github_user_info::dsl::id.eq(user.id)),
                         )
                         .set(GitHubUserInfoUpdate::from(user))
-                        .returning((crate::schema::github_user_info::user_id))
+                        .returning(crate::schema::github_user_info::user_id)
                         .get_result(&*self.conn)?;
 
                         crate::schema::users::dsl::users

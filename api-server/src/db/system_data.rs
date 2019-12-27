@@ -1,10 +1,12 @@
-use crate::models::SystemData;
-use crate::utils::*;
-use crate::MainDbConn;
-use api_server_macros::Dependency;
 use diesel::prelude::*;
 use rocket::request::FromRequest;
 use rocket::{http::Status, Outcome, Request};
+
+use api_server_macros::Dependency;
+
+use crate::models::SystemData;
+use crate::utils::*;
+use crate::MainDbConn;
 
 pub trait SystemDataRepository {
     fn get(&self, key: &str) -> Result<Option<SystemData>, String>;
@@ -45,7 +47,7 @@ impl SystemDataRepository for RealSystemDataRepository {
     fn insert(&self, data: &SystemData) -> Result<(), String> {
         diesel::insert_into(crate::schema::system_data::table)
             .values(data)
-            .on_conflict((crate::schema::system_data::dsl::key))
+            .on_conflict(crate::schema::system_data::dsl::key)
             .do_update()
             .set(data)
             .execute(&*self.conn)

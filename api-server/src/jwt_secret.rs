@@ -5,8 +5,6 @@ use crate::MainDbConn;
 use api_server_macros::InjectedResource;
 use rand::{RngCore, SeedableRng};
 use rocket::{fairing, Rocket};
-use std::fs::File;
-use std::io::ErrorKind;
 use std::ops::Deref;
 
 const JWT_SECRET_KEY: &str = "jwt_secret";
@@ -25,6 +23,7 @@ impl Deref for JwtSecret {
 impl JwtSecret {
     pub fn fairing() -> impl fairing::Fairing {
         fairing::AdHoc::on_attach("jwt secret", |rocket| -> Result<Rocket, Rocket> {
+            info!("Loading jwt secret from database");
             let conn = MainDbConn::get_one(&rocket).expect("Unable to get database connection");
 
             let repo = RealSystemDataRepository::new(conn);
