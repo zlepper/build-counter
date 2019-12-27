@@ -21,10 +21,11 @@ pub struct Jwt {
 
 impl Jwt {
     pub fn create_token_for_user(user: &User, secret: &[u8]) -> Result<String, String> {
-        let exp = (std::time::SystemTime::now() + std::time::Duration::from_secs(60 * 60 * 31))
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
+        let exp = (std::time::SystemTime::now()
+            + std::time::Duration::from_secs(60 * 60 * 24 * 31))
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
         let claims = Claims {
             sub: user.id.to_string(),
             exp,

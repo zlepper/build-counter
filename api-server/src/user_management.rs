@@ -95,43 +95,49 @@ pub fn finish_github_login(
         .load_github_login_session(session.id, &state)
         .to_internal_err(|e| error!("Failed to load existing csrf token: {}", e))?;
 
-    match existing_csrf_token {
-        None => Err(Errors::bad_request("Invalid csrf token")),
-        Some(token) => {
-            let verifier = PkceCodeVerifier::new(token.pkce_verifier.clone());
-            let token_response = github_info
-                .oauth_client
-                .exchange_code(AuthorizationCode::new(code))
-                .set_pkce_verifier(verifier)
-                .request(http_client)
-                .map_err(|e| {
-                    error!("Failed to exchange for github token: {}", e);
-                    Errors::internal_error("GitHub connection failed")
-                })?;
+    let token = match existing_csrf_token {
+        None => return Err(Errors::bad_request("Invalid csrf token")),
+        Some(token) => token,
+    };
 
-            session_repo
-                .delete_login_session(token.id)
-                .to_internal_err(|e| error!("Failed to delete user login session: {}", e))?;
+    let verifier = PkceCodeVerifier::new(token.pkce_verifier.clone());
+    let token_response = github_info
+        .oauth_client
+        .exchange_code(AuthorizationCode::new(code))
+        .set_pkce_verifier(verifier)
+        .request(http_client)
+        .map_err(|e| {
+            error!("Failed to exchange for github token: {}", e);
+            Errors::internal_error("GitHub connection failed")
+        })?;
 
-            let github_user = github_info
-                .get_user_info(token_response.access_token().secret())
-                .to_internal_err(|s| error!("Get user info failed: {}", s))?;
+    session_repo
+        .delete_login_session(token.id)
+        .to_internal_err(|e| error!("Failed to delete user login session: {}", e))?;
 
-            debug!("User info: {:?}", github_user);
+    let github_user = github_info
+        .get_user_info(token_response.access_token().secret())
+        .to_internal_err(|s| error!("Get user info failed: {}", s))?;
 
-            let system_user = user_repo
-                .find_or_create_github_user(github_user)
-                .to_internal_err(|e| error!("Failed to find or create github user: {}", e))?;
+    debug!("User info: {:?}", github_user);
 
-            debug!("Found user in system: {:?}", system_user);
+    let system_user = user_repo
+        .find_or_create_github_user(github_user)
+        .to_internal_err(|e| error!("Failed to find or create github user: {}", e))?;
 
-            let jwt = Jwt::create_token_for_user(&system_user, &*jwt_secret)
-                .to_err_string()
-                .to_internal_err(|e| error!("Failed to generate jwt token for user: {}", e))?;
+    debug!("Found user in system: {:?}", system_user);
 
-            Ok(Redirect::to(token.return_url))
-        }
-    }
+    let jwt = Jwt::create_token_for_user(&system_user, &*jwt_secret)
+        .to_err_string()
+        .to_internal_err(|e| error!("Failed to generate jwt token for user: {}", e))?;
+
+    let mut ru = Url::parse(&token.return_url)
+        .to_err_string()
+        .to_internal_err(|e| error!("Failed to parse return url: {}", e))?;
+
+    ru.query_pairs_mut().append_pair("token", &jwt);
+
+    Ok(Redirect::to(ru.into_string()))
 }
 
 #[cfg(test)]
