@@ -1,15 +1,18 @@
-use crate::github_client_info::GitHubUser;
-use crate::main_db_conn::MainDbConn;
-use crate::models::{GitHubUserInfo, GitHubUserInfoUpdate, User};
-use crate::utils::*;
-use api_server_macros::Dependency;
 use diesel::prelude::*;
 use rocket::request::FromRequest;
 use rocket::{http::Status, Outcome, Request};
 use uuid::Uuid;
 
+use api_server_macros::Dependency;
+
+use crate::github_client_info::GitHubUser;
+use crate::main_db_conn::MainDbConn;
+use crate::models::{GitHubUserInfo, GitHubUserInfoUpdate, User};
+use crate::utils::*;
+
 pub trait UserRepository {
     fn find_or_create_github_user(&self, user: GitHubUser) -> Result<User, String>;
+    fn get_user(&self, id: Uuid) -> Result<Option<GitHubUserInfo>, String>;
 }
 
 impl<'a, 'r> FromRequest<'a, 'r> for Box<dyn UserRepository> {
@@ -73,7 +76,7 @@ impl UserRepository for RealUserRepository {
                                 crate::schema::users::dsl::users
                                     .filter(crate::schema::users::dsl::id.eq(&u.id)),
                             )
-                            .execute(&*self.conn)?;
+                                .execute(&*self.conn)?;
 
                             Ok(User {
                                 id: inserted_user_id,
@@ -89,9 +92,9 @@ impl UserRepository for RealUserRepository {
                             crate::schema::github_user_info::dsl::github_user_info
                                 .filter(crate::schema::github_user_info::dsl::id.eq(user.id)),
                         )
-                        .set(GitHubUserInfoUpdate::from(user))
-                        .returning(crate::schema::github_user_info::user_id)
-                        .get_result(&*self.conn)?;
+                            .set(GitHubUserInfoUpdate::from(user))
+                            .returning(crate::schema::github_user_info::user_id)
+                            .get_result(&*self.conn)?;
 
                         crate::schema::users::dsl::users
                             .filter(crate::schema::users::dsl::id.eq(user_id))
@@ -99,6 +102,14 @@ impl UserRepository for RealUserRepository {
                     }
                 }
             })
+            .to_err_string()
+    }
+
+    fn get_user(&self, id: Uuid) -> Result<Option<GitHubUserInfo>, String> {
+        crate::schema::github_user_info::dsl::github_user_info
+            .filter(crate::schema::github_user_info::dsl::user_id.eq(&id))
+            .first(&*self.conn)
+            .to_optional()
             .to_err_string()
     }
 }

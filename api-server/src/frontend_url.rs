@@ -18,21 +18,17 @@ impl Deref for FrontendUrl {
     }
 }
 
-impl FrontendUrl {
-    pub fn fairing() -> impl ::rocket::fairing::Fairing {
-        rocket::fairing::AdHoc::on_attach(
-            "FrontendUrl config",
-            |rocket| -> Result<Rocket, Rocket> {
-                let frontend_url = rocket.config().get_string(FRONTEND_URL_KEY);
+pub trait AttachFrontendUrlState {
+    fn attach_frontend_url_state(self) -> Self;
+}
 
-                match frontend_url {
-                    Err(e) => {
-                        error!("Failed to get config for {}: {}", FRONTEND_URL_KEY, e);
-                        Err(rocket)
-                    }
-                    Ok(fu) => rocket.manage(FrontendUrl(fu)).ok(),
-                }
-            },
-        )
+impl AttachFrontendUrlState for ::rocket::Rocket {
+    fn attach_frontend_url_state(self) -> Self {
+        let frontend_url = self
+            .config()
+            .get_string(FRONTEND_URL_KEY)
+            .expect("Failed to get config for frontend url");
+
+        self.manage(FrontendUrl(frontend_url))
     }
 }

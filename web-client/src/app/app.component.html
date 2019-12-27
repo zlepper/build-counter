@@ -1,7 +1,14 @@
 <mat-toolbar>
   <span class="fill"></span>
   <ng-container *ngIf="isLoggedIn | async; else showLoginButton">
-    Logged In
+    <ng-container *ngIf="userInformation | async as u; else showLoading">
+      {{ u.name }}
+      <img [src]="u.avatarUrl" alt="{{ u.name }}'s avatar image" class="avatar-image" />
+    </ng-container>
+
+    <ng-template #showLoading>
+      Loading...
+    </ng-template>
   </ng-container>
 
   <ng-template #showLoginButton>

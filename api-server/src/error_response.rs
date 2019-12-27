@@ -9,6 +9,7 @@ pub enum Errors {
     BadRequest(String),
     InternalError(String),
     Unauthorized,
+    NotFound,
 }
 
 impl Errors {
@@ -41,6 +42,7 @@ impl<'r> Responder<'r> for Errors {
             Errors::BadRequest(message) => ErrorResponse::new(400, message),
             Errors::InternalError(message) => ErrorResponse::new(500, message),
             Errors::Unauthorized => ErrorResponse::new(401, "Unauthorized".to_string()),
+            Errors::NotFound => ErrorResponse::new(404, "Not found".to_string()),
         };
 
         let accepted = request

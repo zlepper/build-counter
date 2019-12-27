@@ -12,7 +12,7 @@ export class UserService {
   constructor(private httpClient: HttpClient) {}
 
   public getUserInformation(userId: string): Observable<IUser | null> {
-    return this.httpClient.get<IUser>(`${environment.apiServerUrl}/api/user/${userId}`).pipe(
+    return this.httpClient.get<IUser>(`${environment.apiServerUrl}api/user/${userId}`).pipe(
       catchError(err => {
         console.error('Get user failed', err);
         return of(null);

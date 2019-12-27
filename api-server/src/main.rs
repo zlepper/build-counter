@@ -9,6 +9,7 @@ extern crate log;
 #[macro_use]
 extern crate serde;
 
+mod api;
 mod app;
 mod db;
 mod error_response;
@@ -18,6 +19,7 @@ mod jwt;
 mod jwt_secret;
 mod main_db_conn;
 mod models;
+mod ruuid;
 mod schema;
 mod session;
 mod user_management;
