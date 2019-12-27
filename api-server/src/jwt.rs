@@ -1,21 +1,7 @@
-//let exp = (std::time::SystemTime::now() + std::time::Duration::SECOND * 60 * 60 * 31).duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
-//
-//let claims = jwt::Claims::new(jwt::Registered {
-//exp: Some(exp),
-//sub: Some(system_user.id.into()),
-//..Default::default()
-//});
-//
-//let token = jwt::Token::new(jwt::header::Header {
-//alg: jwt::header::Algorithm::HS256,
-//typ: Some(jwt::header::HeaderType::JWT),
-//kid: None,
-//}, claims);
-//
-//token.signed(&jwt_secret.0, )
-
 use crate::error_response::Errors;
 use crate::jwt_secret::JwtSecret;
+use crate::models::User;
+use crate::utils::ToErrString;
 use itertools::Itertools;
 use rocket::request::FromRequest;
 use rocket::{http::Status, Outcome, Request};
@@ -24,13 +10,31 @@ use uuid::Uuid;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
     pub sub: String,
-    exp: u64,
+    pub exp: u64,
 }
 
 const AUTHORIZATION_HEADER_NAME: &str = "Authorization";
 
 pub struct Jwt {
     pub user_id: Uuid,
+}
+
+impl Jwt {
+    pub fn create_token_for_user(user: &User, secret: &[u8]) -> Result<String, String> {
+        let exp = (std::time::SystemTime::now() + std::time::Duration::from_secs(60 * 60 * 31))
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let claims = Claims {
+            sub: user.id.to_string(),
+            exp,
+        };
+
+        let token = jsonwebtoken::encode(&jsonwebtoken::Header::default(), &claims, secret)
+            .to_err_string()?;
+
+        Ok(token)
+    }
 }
 
 impl<'a, 'r> FromRequest<'a, 'r> for Jwt {
@@ -83,5 +87,21 @@ impl<'a, 'r> FromRequest<'a, 'r> for Jwt {
             }
             Ok(id) => Outcome::Success(Jwt { user_id: id }),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn generates_token() {
+        let user = User { id: Uuid::new_v4() };
+
+        let secret = JwtSecret::generate_secret();
+
+        let token = Jwt::create_token_for_user(&user, &secret).unwrap();
+
+        println!("Generated token: {}", token);
     }
 }

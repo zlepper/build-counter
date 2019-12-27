@@ -37,14 +37,10 @@ impl JwtSecret {
                 }
                 Ok(None) => {
                     // Create new
-                    let mut rng = rand::rngs::StdRng::from_entropy();
-                    let mut bytes = [0; 256];
-                    rng.fill_bytes(&mut bytes);
-
-                    let byte_result: Vec<u8> = bytes.to_vec();
+                    let bytes = JwtSecret::generate_secret();
 
                     let insert_result = repo.insert(&SystemData {
-                        content: byte_result.clone(),
+                        content: bytes.clone(),
                         key: JWT_SECRET_KEY.to_string(),
                     });
 
@@ -52,7 +48,7 @@ impl JwtSecret {
                         error!("Failed to insert new jwt secret: {}", e);
                         return Err(rocket);
                     } else {
-                        byte_result
+                        bytes
                     }
                 }
                 Ok(Some(data)) => data.content,
@@ -60,5 +56,13 @@ impl JwtSecret {
 
             rocket.manage(JwtSecret(secret)).ok()
         })
+    }
+
+    pub fn generate_secret() -> Vec<u8> {
+        let mut rng = rand::rngs::StdRng::from_entropy();
+        let mut bytes = [0; 256];
+        rng.fill_bytes(&mut bytes);
+
+        bytes.to_vec()
     }
 }
