@@ -1,8 +1,14 @@
 <mat-toolbar>
   <span class="fill"></span>
-  <a mat-raised-button [href]="apiServerUrl + '/start-gh-login'">
-    Login
-  </a>
+  <ng-container *ngIf="isLoggedIn | async; else showLoginButton">
+    Logged In
+  </ng-container>
+
+  <ng-template #showLoginButton>
+    <a mat-raised-button [href]="loginUrl">
+      Login
+    </a>
+  </ng-template>
 </mat-toolbar>
 
 <router-outlet></router-outlet>
