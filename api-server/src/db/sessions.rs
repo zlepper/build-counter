@@ -1,6 +1,6 @@
+use crate::main_db_conn::MainDbConn;
 use crate::models::{GitHubLoginSessionInformation, NewGitHubLoginSessionInformation};
 use crate::utils::*;
-use crate::MainDbConn;
 use api_server_macros::Dependency;
 use diesel::prelude::*;
 use rocket::http::Status;

@@ -1,7 +1,7 @@
 use crate::db::system_data::{RealSystemDataRepository, SystemDataRepository};
+use crate::main_db_conn::MainDbConn;
 use crate::models::SystemData;
 use crate::utils::*;
-use crate::MainDbConn;
 use api_server_macros::InjectedResource;
 use rand::{RngCore, SeedableRng};
 use rocket::{fairing, Rocket};

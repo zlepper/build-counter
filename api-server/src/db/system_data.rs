@@ -4,9 +4,9 @@ use rocket::{http::Status, Outcome, Request};
 
 use api_server_macros::Dependency;
 
+use crate::main_db_conn::MainDbConn;
 use crate::models::SystemData;
 use crate::utils::*;
-use crate::MainDbConn;
 
 pub trait SystemDataRepository {
     fn get(&self, key: &str) -> Result<Option<SystemData>, String>;

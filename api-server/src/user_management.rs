@@ -1,11 +1,11 @@
 use crate::db::sessions::SessionRepository;
 use crate::db::users::UserRepository;
 use crate::error_response::Errors;
+use crate::frontend_url::FrontendUrl;
 use crate::github_client_info::GitHubClientInfo;
+use crate::jwt_secret::JwtSecret;
 use crate::session::Session;
 use crate::utils::ToInternalStatusError;
-use crate::FrontendUrl;
-use crate::JwtSecret;
 use oauth2::reqwest::http_client;
 use oauth2::{AuthorizationCode, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, TokenResponse};
 use rocket::response::Redirect;

@@ -1,7 +1,7 @@
 use crate::github_client_info::GitHubUser;
+use crate::main_db_conn::MainDbConn;
 use crate::models::{GitHubUserInfo, GitHubUserInfoUpdate, User};
 use crate::utils::*;
-use crate::MainDbConn;
 use api_server_macros::Dependency;
 use diesel::prelude::*;
 use rocket::request::FromRequest;
