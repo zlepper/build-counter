@@ -41,50 +41,47 @@ impl<'a, 'r> FromRequest<'a, 'r> for Jwt {
 
         let auth_header = request.headers().get_one(AUTHORIZATION_HEADER_NAME);
 
-        match auth_header {
-            None => Outcome::Forward(()),
-            Some(a) => {
-                let split_header = a.split(" ").next_tuple();
+        let split_header = match auth_header {
+            None => return Outcome::Forward(()),
+            Some(a) => a.split(" ").next_tuple(),
+        };
 
-                match split_header {
-                    None => {
-                        error!("Invalid authorization header: {}", a);
-                        Outcome::Forward(())
-                    }
-                    Some((scheme, token)) => {
-                        if scheme != "Bearer" {
-                            error!("Invalid auth scheme: {}", scheme);
-                            Outcome::Forward(())
-                        } else {
-                            let claims = jsonwebtoken::decode::<Claims>(
-                                token,
-                                &*jwt_secret,
-                                &jsonwebtoken::Validation::default(),
-                            );
-
-                            match claims {
-                                Err(e) => {
-                                    error!("Failed to decode jwt token: {}", e);
-                                    Outcome::Failure((Status::Unauthorized, Errors::Unauthorized))
-                                }
-                                Ok(td) => {
-                                    let user_id = Uuid::parse_str(&td.claims.sub);
-                                    match user_id {
-                                        Err(e) => {
-                                            error!("Failed to parse user id in jwt. This is a critical error: {}", e);
-                                            Outcome::Failure((
-                                                Status::Unauthorized,
-                                                Errors::Unauthorized,
-                                            ))
-                                        }
-                                        Ok(id) => Outcome::Success(Jwt { user_id: id }),
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+        let (scheme, token) = match split_header {
+            None => {
+                error!("Invalid authorization header: {}", auth_header.unwrap());
+                return Outcome::Forward(());
             }
+            Some(t) => t,
+        };
+        if scheme != "Bearer" {
+            error!("Invalid auth scheme: {}", scheme);
+            return Outcome::Forward(());
+        }
+
+        let claims = jsonwebtoken::decode::<Claims>(
+            token,
+            &*jwt_secret,
+            &jsonwebtoken::Validation::default(),
+        );
+
+        let td = match claims {
+            Err(e) => {
+                error!("Failed to decode jwt token: {}", e);
+                return Outcome::Failure((Status::Unauthorized, Errors::Unauthorized));
+            }
+            Ok(td) => td,
+        };
+
+        let user_id = Uuid::parse_str(&td.claims.sub);
+        match user_id {
+            Err(e) => {
+                error!(
+                    "Failed to parse user id in jwt. This is a critical error: {}",
+                    e
+                );
+                Outcome::Failure((Status::Unauthorized, Errors::Unauthorized))
+            }
+            Ok(id) => Outcome::Success(Jwt { user_id: id }),
         }
     }
 }
