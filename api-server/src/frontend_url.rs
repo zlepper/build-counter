@@ -3,11 +3,20 @@ use rocket::Rocket;
 use api_server_macros::InjectedResource;
 
 use crate::utils::*;
+use std::ops::Deref;
 
 const FRONTEND_URL_KEY: &str = "frontend_url";
 
 #[derive(Clone, Debug, PartialEq, Eq, InjectedResource)]
 pub struct FrontendUrl(String);
+
+impl Deref for FrontendUrl {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 impl FrontendUrl {
     pub fn fairing() -> impl ::rocket::fairing::Fairing {
@@ -25,9 +34,5 @@ impl FrontendUrl {
                 }
             },
         )
-    }
-
-    pub fn value(&self) -> &str {
-        &self.0
     }
 }

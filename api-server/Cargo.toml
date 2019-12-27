@@ -21,3 +21,4 @@ reqwest = {version = "0.9"}
 jsonwebtoken = "5"
 rand = "0.7"
 itertools = "0.8"
+url = "2.1"
