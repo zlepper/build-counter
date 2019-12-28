@@ -6,7 +6,8 @@ import { AppComponent } from './app.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { MatButtonModule, MatToolbarModule } from '@angular/material';
 import { AuthorizationStateService, LocalStorageService } from './modules/services';
-import { HttpClientModule } from '@angular/common/http';
+import { HTTP_INTERCEPTORS, HttpClientModule } from '@angular/common/http';
+import { AuthInterceptor } from './modules/services/auth.interceptor';
 
 const TOKEN_KEY = 'token';
 
@@ -37,6 +38,11 @@ function startup(authorizationStateService: AuthorizationStateService, localStor
   declarations: [AppComponent],
   imports: [BrowserModule, AppRoutingModule, BrowserAnimationsModule, MatToolbarModule, MatButtonModule, HttpClientModule],
   providers: [
+    {
+      provide: HTTP_INTERCEPTORS,
+      multi: true,
+      useClass: AuthInterceptor,
+    },
     {
       provide: APP_INITIALIZER,
       multi: true,

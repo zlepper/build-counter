@@ -10,6 +10,7 @@ pub enum Errors {
     InternalError(String),
     Unauthorized,
     NotFound,
+    Forbidden,
 }
 
 impl Errors {
@@ -43,6 +44,7 @@ impl<'r> Responder<'r> for Errors {
             Errors::InternalError(message) => ErrorResponse::new(500, message),
             Errors::Unauthorized => ErrorResponse::new(401, "Unauthorized".to_string()),
             Errors::NotFound => ErrorResponse::new(404, "Not found".to_string()),
+            Errors::Forbidden => ErrorResponse::new(403, "Forbidden".to_string()),
         };
 
         let accepted = request

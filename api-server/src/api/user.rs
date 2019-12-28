@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use crate::db::users::UserRepository;
 use crate::error_response::Errors;
+use crate::jwt::Jwt;
 use crate::ruuid::RUuid;
 use crate::utils::ToInternalStatusError;
 
@@ -27,7 +28,15 @@ pub struct UserResponse {
 }
 
 #[get("/<id>")]
-fn get_user(id: RUuid, user_repo: Box<dyn UserRepository>) -> Result<Json<UserResponse>, Errors> {
+fn get_user(
+    id: RUuid,
+    user_repo: Box<dyn UserRepository>,
+    jwt: Jwt,
+) -> Result<Json<UserResponse>, Errors> {
+    if id != jwt.user_id {
+        return Err(Errors::Forbidden);
+    }
+
     let user = user_repo
         .get_user(id.into())
         .to_internal_err(|e| error!("Failed to query for user: {}", e))?;
