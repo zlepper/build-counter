@@ -1,8 +1,13 @@
-use crate::utils::ToOk;
-use rocket::http::{ContentType, Status};
-use rocket::response::Responder;
-use rocket::{response, Request, Response};
-use std::io::Cursor;
+use crate::utils::*;
+use actix_http::error::ParseError;
+use actix_http::http::header::ContentType;
+use actix_http::http::StatusCode;
+use actix_http::Response;
+use actix_web::body::Body;
+use actix_web::error::ErrorInternalServerError;
+use actix_web::{Error, HttpRequest, Responder};
+use futures::future::{err, ok, Ready};
+use reqwest::header::HeaderValue;
 
 #[derive(Debug)]
 pub enum Errors {
@@ -36,8 +41,11 @@ impl ErrorResponse {
     }
 }
 
-impl<'r> Responder<'r> for Errors {
-    fn respond_to(self, request: &Request) -> response::Result<'r> {
+impl Responder for Errors {
+    type Error = Error;
+    type Future = Ready<Result<Response, Self::Error>>;
+
+    fn respond_to(self, req: &HttpRequest) -> Self::Future {
         info!("Handling request error: {:?}", self);
         let res_body = match self {
             Errors::BadRequest(message) => ErrorResponse::new(400, message),
@@ -47,10 +55,11 @@ impl<'r> Responder<'r> for Errors {
             Errors::Forbidden => ErrorResponse::new(403, "Forbidden".to_string()),
         };
 
-        let accepted = request
+        let accepted = req
             .headers()
             .get("Accept")
-            .next()
+            .unwrap_or("application/json".into())
+            .to_str()
             .unwrap_or("application/json")
             .split(",")
             .take(1)
@@ -59,28 +68,14 @@ impl<'r> Responder<'r> for Errors {
             .split("/")
             .skip(1)
             .next()
-            .ok_or(Status::InternalServerError)?;
+            .ok_or(ParseError::Header)?;
 
         debug!("Request accepts: {}", accepted);
 
-        let body = serde_json::to_string(&res_body);
-
-        match body {
-            Err(e) => {
-                error!("Failed to serialize body to json: {}", e);
-                Err(Status::InternalServerError)
-            }
-            Ok(b) => {
-                debug!("Sending json response: {}", b);
-                Response::build()
-                    .status(
-                        Status::from_code(res_body.status).unwrap_or(Status::InternalServerError),
-                    )
-                    .header(ContentType::JSON)
-                    .sized_body(Cursor::new(b))
-                    .finalize()
-                    .ok()
-            }
-        }
+        ok(Response::build(
+            StatusCode::from_u16(res_body.status).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+        )
+        .content_type(ContentType::json())
+        .json(res_body))
     }
 }

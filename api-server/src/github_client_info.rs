@@ -1,9 +1,7 @@
+use crate::config::Configuration;
 use crate::utils::{ToErr, ToErrString, ToOk};
-use api_server_macros::InjectedResource;
 use oauth2::basic::BasicClient;
 use oauth2::{AuthUrl, ClientId, ClientSecret, RedirectUrl, TokenUrl};
-use rocket::fairing::{Fairing, Info, Kind};
-use rocket::Rocket;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GitHubUser {
@@ -27,7 +25,7 @@ impl std::fmt::Display for GitHubResponseError {
     }
 }
 
-#[derive(Clone, InjectedResource)]
+#[derive(Clone)]
 pub struct GitHubClientInfo {
     pub oauth_client: BasicClient,
 }
@@ -47,11 +45,6 @@ impl GitHubClientInfo {
 
         if response.status().is_success() {
             let content = response.text().to_err_string()?;
-            //            response.json()
-            //                .map_err(|e| {
-            //                    error!("Failed to deserialize current user");
-            //                    e.to_string()
-            //                })
             debug!("Github api response: {}", content);
             serde_json::from_str(&content).map_err(|e| {
                 error!("Failed to deserialize current user: {}", e);
@@ -89,56 +82,33 @@ impl GitHubClientInfo {
 
         Ok(vec![])
     }
-}
 
-pub struct GitHubClientInfoFairing;
+    pub fn get_github_client_info(cfg: &Configuration) -> Result<GitHubClientInfo, String> {
+        let &Configuration {
+            github_client_id,
+            github_client_secret,
+            port,
+            hostname,
+            ..
+        } = cfg;
 
-impl Fairing for GitHubClientInfoFairing {
-    fn info(&self) -> Info {
-        Info {
-            name: "GitHubClientInfo",
-            kind: Kind::Attach,
-        }
-    }
+        let info = GitHubClientInfo {
+            oauth_client: BasicClient::new(
+                ClientId::new(github_client_id),
+                Some(ClientSecret::new(github_client_secret)),
+                AuthUrl::new("https://github.com/login/oauth/authorize".to_string())
+                    .to_err_string()?,
+                Some(
+                    TokenUrl::new("https://github.com/login/oauth/access_token".to_string())
+                        .to_err_string()?,
+                ),
+            )
+            .set_redirect_url(
+                RedirectUrl::new(format!("{}:{}/gh-oauth-callback", hostname, port))
+                    .to_err_string()?,
+            ),
+        };
 
-    fn on_attach(&self, rocket: Rocket) -> Result<Rocket, Rocket> {
-        let client_id = rocket.config().get_string("github_client_id");
-        let client_secret = rocket.config().get_string("github_client_secret");
-        let main_host = rocket
-            .config()
-            .get_string("host")
-            .unwrap_or("http://localhost".to_string());
-        let port = rocket.config().port;
-
-        match (client_id, client_secret) {
-            (Err(e), _) => {
-                error!("github_client_id was not set: {}", e);
-                Err(rocket)
-            }
-            (_, Err(e)) => {
-                error!("github_client_secret was not set: {}", e);
-                Err(rocket)
-            }
-            (Ok(c_id), Ok(c_secret)) => rocket
-                .manage(GitHubClientInfo {
-                    oauth_client: BasicClient::new(
-                        ClientId::new(c_id),
-                        Some(ClientSecret::new(c_secret)),
-                        AuthUrl::new("https://github.com/login/oauth/authorize".to_string())
-                            .unwrap(),
-                        Some(
-                            TokenUrl::new(
-                                "https://github.com/login/oauth/access_token".to_string(),
-                            )
-                            .unwrap(),
-                        ),
-                    )
-                    .set_redirect_url(
-                        RedirectUrl::new(format!("{}:{}/gh-oauth-callback", main_host, port))
-                            .unwrap(),
-                    ),
-                })
-                .ok(),
-        }
+        Ok(info)
     }
 }

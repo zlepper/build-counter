@@ -1,31 +1,31 @@
+use crate::config::Configuration;
+use crate::utils::ToErrString;
+use diesel::r2d2::ConnectionManager;
 use diesel::PgConnection;
-use rocket::{fairing, Rocket};
-use rocket_contrib::database;
 use std::borrow::Borrow;
 
 embed_migrations!("migrations");
 
-#[database("main_db")]
-pub struct MainDbConn(diesel::PgConnection);
+pub type MainDbPool = r2d2::Pool<ConnectionManager<diesel::PgConnection>>;
 
-impl Borrow<diesel::PgConnection> for MainDbConn {
-    fn borrow(&self) -> &PgConnection {
-        &self.0
-    }
+pub trait MainDbPoolCtor {
+    fn get_pool(cfg: &Configuration) -> Result<Self, String>;
 }
 
-impl MainDbConn {
-    pub fn migration_fairing() -> impl fairing::Fairing {
-        fairing::AdHoc::on_attach("migrations", |rocket| -> Result<Rocket, Rocket> {
-            info!("Running migrations");
-            let conn = MainDbConn::get_one(&rocket).expect("Failed to get connection instance");
+impl MainDbPoolCtor for MainDbPool {
+    fn get_pool(cfg: &Configuration) -> Result<MainDbPool, String> {
+        let manager = ConnectionManager::<diesel::PgConnection>::new(&cfg.database_url);
+        let pool = r2d2::Pool::builder().build(manager).to_err_string()?;
 
-            if let Err(e) = embedded_migrations::run(&*conn) {
-                error!("Failed to run migrations: {}", e);
-                Err(rocket)
-            } else {
-                Ok(rocket)
-            }
-        })
+        let conn = pool.get().to_err_string()?;
+
+        info!("Running migrations");
+        if let Err(e) = embedded_migrations::run(&conn) {
+            error!("Failed to run migrations: {}", e);
+            Err(format!("Failed to run migrations: {}", e))
+        } else {
+            drop(conn);
+            Ok(pool)
+        }
     }
 }

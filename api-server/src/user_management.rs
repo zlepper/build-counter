@@ -1,7 +1,10 @@
+use actix_service::ServiceFactory;
+use actix_web::body::MessageBody;
+use actix_web::dev::{ServiceRequest, ServiceResponse};
+use actix_web::App;
+use actix_web::Error;
 use oauth2::reqwest::http_client;
 use oauth2::{AuthorizationCode, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, TokenResponse};
-use rocket::response::Redirect;
-use rocket::{get, routes, Rocket};
 use url::Url;
 
 use crate::db::sessions::SessionRepository;
@@ -10,7 +13,8 @@ use crate::error_response::Errors;
 use crate::frontend_url::FrontendUrl;
 use crate::github_client_info::GitHubClientInfo;
 use crate::jwt::Jwt;
-use crate::jwt_secret::JwtSecret;
+use crate::jwt_secret::SecretStorage;
+use crate::redirect::Redirect;
 use crate::session::Session;
 use crate::utils::{ToErrString, ToInternalStatusError};
 
@@ -18,9 +22,19 @@ pub trait UserManagementMount {
     fn mount_user_management(self) -> Self;
 }
 
-impl UserManagementMount for Rocket {
+impl<T, B> UserManagementMount for App<T, B>
+where
+    B: MessageBody,
+    T: ServiceFactory<
+        Config = (),
+        Request = ServiceRequest,
+        Response = ServiceResponse<B>,
+        Error = Error,
+        InitError = (),
+    >,
+{
     fn mount_user_management(self) -> Self {
-        self.mount("/", routes![start_login, finish_github_login])
+        self.service(start_login).service(finish_github_login)
     }
 }
 
@@ -39,7 +53,7 @@ fn is_valid_return_url(frontend_url: &str, return_url: &str) -> Result<bool, Str
 }
 
 #[get("/start-gh-login?<return_url>")]
-fn start_login(
+async fn start_login(
     github_info: GitHubClientInfo,
     session: Session,
     repo: Box<dyn SessionRepository>,
@@ -76,7 +90,7 @@ fn start_login(
     )
     .to_internal_err(|e| error!("Failed to insert csrf token: {}", e))?;
 
-    Ok(Redirect::to(auth_url.to_string()))
+    Ok(Redirect::to(auth_url))
 }
 
 #[get("/gh-oauth-callback?<code>&<state>")]
@@ -87,7 +101,7 @@ pub fn finish_github_login(
     github_info: GitHubClientInfo,
     code: String,
     state: String,
-    jwt_secret: JwtSecret,
+    jwt_secret: SecretStorage<Jwt>,
 ) -> Result<Redirect, Errors> {
     info!("code: '{}', state: '{}'", code, state);
 
@@ -142,8 +156,6 @@ pub fn finish_github_login(
 
 #[cfg(test)]
 mod tests {
-    use rocket::error::RouteUriError::Uri;
-
     use super::*;
 
     #[derive(Debug)]

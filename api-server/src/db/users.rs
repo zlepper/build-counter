@@ -1,33 +1,22 @@
 use diesel::prelude::*;
-use rocket::request::FromRequest;
-use rocket::{http::Status, Outcome, Request};
 use uuid::Uuid;
 
-use api_server_macros::Dependency;
+use api_server_macros::{dynamic_dependency, Dependency};
 
 use crate::github_client_info::GitHubUser;
-use crate::main_db_conn::MainDbConn;
+use crate::main_db_conn::MainDbPool;
 use crate::models::{GitHubUserInfo, GitHubUserInfoUpdate, User};
 use crate::utils::*;
 
+#[dynamic_dependency(RealUserRepository)]
 pub trait UserRepository {
     fn find_or_create_github_user(&self, user: GitHubUser) -> Result<User, String>;
     fn get_user(&self, id: Uuid) -> Result<Option<GitHubUserInfo>, String>;
 }
 
-impl<'a, 'r> FromRequest<'a, 'r> for Box<dyn UserRepository> {
-    type Error = ();
-
-    fn from_request(request: &'a Request<'r>) -> Outcome<Self, (Status, Self::Error), ()> {
-        let instance = request.guard::<RealUserRepository>()?;
-
-        Outcome::Success(Box::new(instance))
-    }
-}
-
 #[derive(Dependency)]
 pub struct RealUserRepository {
-    conn: MainDbConn,
+    conn: MainDbPool,
 }
 
 impl UserRepository for RealUserRepository {

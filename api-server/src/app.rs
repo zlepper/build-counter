@@ -1,50 +1,41 @@
-use crate::api::user::UserApiMount;
-use crate::frontend_url::{AttachFrontendUrlState, FrontendUrl};
-use crate::github_client_info::GitHubClientInfoFairing;
-use crate::jwt_secret::JwtSecret;
-use crate::main_db_conn::MainDbConn;
-use crate::user_management::UserManagementMount;
-use rocket::{fairing, Rocket};
-use rocket_cors::AllowedOrigins;
+use actix_cors::Cors;
+use actix_session::CookieSession;
+use actix_web::{middleware, App, HttpServer};
 
-trait CorsFairing {
-    fn add_cors(self) -> Self;
-}
+use crate::config::Configuration;
+use crate::github_client_info::GitHubClientInfo;
+use crate::jwt::Jwt;
+use crate::jwt_secret::SecretStorage;
+use crate::main_db_conn::{MainDbPool, MainDbPoolCtor};
 
-impl CorsFairing for Rocket {
-    fn add_cors(self) -> Self {
-        let frontend_url = self
-            .state::<FrontendUrl>()
-            .expect("Frontend url was not attached");
+pub async fn start() -> std::io::Result<()> {
+    let cfg = Configuration::get_config()?;
 
-        let allowed_origins = AllowedOrigins::some_exact(&[(*frontend_url).to_string()]);
+    let db_pool = MainDbPool::get_pool(&cfg)?;
 
-        let cors = rocket_cors::CorsOptions {
-            allowed_origins,
-            ..Default::default()
-        }
-        .to_cors()
-        .expect("Failed to create cors configuration");
+    let github_info = GitHubClientInfo::get_github_client_info(&cfg)?;
 
-        self.attach(cors)
-    }
-}
+    let jwt_secret = SecretStorage::<Jwt>::get_or_create_secret(&db_pool, "jwt_secret", 256)?;
 
-fn get_rocket() -> Rocket {
-    rocket::ignite()
-        .attach(MainDbConn::fairing())
-        .attach(MainDbConn::migration_fairing())
-        .attach(GitHubClientInfoFairing)
-        .attach_frontend_url_state()
-        .attach(JwtSecret::fairing())
-        .add_cors()
-        .mount_user_management()
-        .mount_user_api()
-}
+    let cookie_secret =
+        SecretStorage::<CookieSession>::get_or_create_secret(&db_pool, "cookie_secret", 32)?;
 
-pub fn start() {
-    let r = get_rocket();
-
-    info!("Starting rocket!");
-    r.launch();
+    HttpServer::new(|| {
+        App::new()
+            .data(db_pool.clone())
+            .data(github_info)
+            .data(cfg)
+            .data(jwt_secret)
+            .wrap(CookieSession::signed(&cookie_secret).secure(false))
+            .wrap(middleware::Logger::default())
+            .wrap(
+                Cors::new()
+                    .allowed_origin(&cfg.frontend_url)
+                    .max_age(3600)
+                    .finish(),
+            )
+    })
+    .bind("127.0.0.1:9000")?
+    .run()
+    .await
 }

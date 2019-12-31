@@ -1,8 +1,13 @@
-use rocket::http::{Status};
-use rocket::http::{Cookie};
-use rocket::request::FromRequest;
-use rocket::{Outcome, Request};
 use uuid::Uuid;
+
+use std::pin::Pin;
+use std::task::{Context, Poll};
+
+use actix_service::{Service, Transform};
+use actix_session::UserSession;
+use actix_web::{dev::ServiceRequest, dev::ServiceResponse, Error, HttpMessage};
+use futures::future::{ok, Ready};
+use futures::Future;
 
 // Takes care of starting or maintaining a session
 #[derive(Debug)]
@@ -10,25 +15,64 @@ pub struct Session {
     pub id: Uuid,
 }
 
+impl<S, B> Transform<S> for Session
+where
+    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S::Future: 'static,
+    B: 'static,
+{
+    type Request = ServiceRequest;
+    type Response = ServiceResponse<B>;
+    type Error = Error;
+    type Transform = SessionMiddleware<S>;
+    type InitError = ();
+    type Future = Ready<Result<Self::Transform, Self::InitError>>;
+
+    fn new_transform(&self, service: S) -> Self::Future {
+        ok(SessionMiddleware { next: service })
+    }
+}
+
 const SESSION_ID_KEY: &str = "session_id";
 
-impl<'a, 'r> FromRequest<'a, 'r> for Session {
-    type Error = ();
+pub struct SessionMiddleware<S> {
+    next: S,
+}
 
-    fn from_request(request: &'a Request<'r>) -> Outcome<Self, (Status, Self::Error), ()> {
-        let mut cookies = request.cookies();
-        let active_session_id = cookies.get_private(SESSION_ID_KEY);
+impl<S, B> Service for SessionMiddleware<S>
+where
+    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S::Future: 'static,
+    B: 'static,
+{
+    type Request = ServiceRequest;
+    type Response = ServiceResponse<B>;
+    type Error = Error;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
 
-        if let Some(c) = active_session_id {
-            let session_id = c.value().parse().unwrap();
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.service.poll_ready(cx)
+    }
 
-            Outcome::Success(Session { id: session_id })
-        } else {
-            let session_id = Uuid::new_v4();
+    fn call(&mut self, mut req: ServiceRequest) -> Self::Future {
+        let ses = req.get_session();
 
-            cookies.add_private(Cookie::new(SESSION_ID_KEY, session_id.to_string()));
+        let ses_id = ses.get::<Uuid>(SESSION_ID_KEY)?;
 
-            Outcome::Success(Session { id: session_id })
-        }
+        let session_id = match ses_id {
+            Some(c) => c,
+            None => Uuid::new_v4(),
+        };
+
+        ses.set(SESSION_ID_KEY, session_id);
+
+        self.service.call(req)
+
+        //        Box::pin(async move {
+        //            let res = fut.await?;
+        //
+        //            println!("Hi from response");
+        //            Ok(res)
+        //        })
     }
 }

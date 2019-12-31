@@ -1,0 +1,5 @@
+port = 9000
+frontend_url = "http://localhost:4200"
+database_url = "postgres://postgres:password@localhost"
+hostname = "http://localhost"
+host_binding = "127.0.0.1"

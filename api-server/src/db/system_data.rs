@@ -1,36 +1,28 @@
 use diesel::prelude::*;
-use rocket::request::FromRequest;
-use rocket::{http::Status, Outcome, Request};
 
-use api_server_macros::Dependency;
-
-use crate::main_db_conn::MainDbConn;
+use crate::main_db_conn::MainDbPool;
 use crate::models::SystemData;
 use crate::utils::*;
+use actix_web::dev::Payload;
+use actix_web::Error;
+use actix_web::{FromRequest, HttpRequest};
+use api_server_macros::{dynamic_dependency, Dependency};
+use futures::future::Ready;
 
+#[dynamic_dependency(RealSystemDataRepository)]
 pub trait SystemDataRepository {
     fn get(&self, key: &str) -> Result<Option<SystemData>, String>;
     fn insert(&self, data: &SystemData) -> Result<(), String>;
     fn delete(&self, key: &str) -> Result<(), String>;
 }
 
-impl<'a, 'r> FromRequest<'a, 'r> for Box<dyn SystemDataRepository> {
-    type Error = ();
-
-    fn from_request(request: &'a Request<'r>) -> Outcome<Self, (Status, Self::Error), ()> {
-        let instance = request.guard::<RealSystemDataRepository>()?;
-
-        Outcome::Success(Box::new(instance))
-    }
-}
-
 #[derive(Dependency)]
 pub struct RealSystemDataRepository {
-    conn: MainDbConn,
+    conn: MainDbPool,
 }
 
 impl RealSystemDataRepository {
-    pub fn new(conn: MainDbConn) -> Self {
+    pub fn new(conn: MainDbPool) -> Self {
         RealSystemDataRepository { conn }
     }
 }

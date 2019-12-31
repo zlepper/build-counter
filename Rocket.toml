@@ -1,6 +1,0 @@
-[development]
-port = 9000
-frontend_url = "http://localhost:4200"
-
-[global.databases]
-main_db = {url = "postgres://postgres:password@localhost"}

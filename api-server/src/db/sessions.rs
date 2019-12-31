@@ -1,13 +1,11 @@
-use crate::main_db_conn::MainDbConn;
+use crate::main_db_conn::MainDbPool;
 use crate::models::{GitHubLoginSessionInformation, NewGitHubLoginSessionInformation};
 use crate::utils::*;
-use api_server_macros::Dependency;
+use api_server_macros::{dynamic_dependency, Dependency};
 use diesel::prelude::*;
-use rocket::http::Status;
-use rocket::request::FromRequest;
-use rocket::{Outcome, Request};
 use uuid::Uuid;
 
+#[dynamic_dependency(RealSessionRepository)]
 pub trait SessionRepository {
     // Should create a new session for a github login
     fn create_session_for_github_login(
@@ -28,19 +26,9 @@ pub trait SessionRepository {
     fn delete_login_session(&self, id: Uuid) -> Result<(), String>;
 }
 
-impl<'a, 'r> FromRequest<'a, 'r> for Box<dyn SessionRepository> {
-    type Error = ();
-
-    fn from_request(request: &'a Request<'r>) -> Outcome<Self, (Status, Self::Error), ()> {
-        let instance = request.guard::<RealSessionRepository>()?;
-
-        Outcome::Success(Box::new(instance))
-    }
-}
-
 #[derive(Dependency)]
 pub struct RealSessionRepository {
-    conn: MainDbConn,
+    conn: MainDbPool,
 }
 
 impl SessionRepository for RealSessionRepository {
