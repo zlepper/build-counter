@@ -7,8 +7,42 @@ use crate::github_client_info::GitHubClientInfo;
 use crate::jwt::Jwt;
 use crate::jwt_secret::SecretStorage;
 use crate::main_db_conn::{MainDbPool, MainDbPoolCtor};
+use crate::utils::ToOk;
+use serde::export::fmt::Error;
+use serde::export::Formatter;
+use std::fmt::Display;
+use std::sync::Arc;
 
-pub async fn start() -> std::io::Result<()> {
+#[derive(Debug)]
+pub enum StartupError {
+    ConfigError(String),
+    IO(std::io::Error),
+}
+
+impl From<String> for StartupError {
+    fn from(s: String) -> Self {
+        StartupError::ConfigError(s)
+    }
+}
+
+impl From<std::io::Error> for StartupError {
+    fn from(e: std::io::Error) -> Self {
+        StartupError::IO(e)
+    }
+}
+
+impl Display for StartupError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        match self {
+            StartupError::ConfigError(message) => write!(f, "Failed to get configs: {}", message),
+            StartupError::IO(e) => write!(f, "IO Error: {}", e),
+        }
+    }
+}
+
+impl std::error::Error for StartupError {}
+
+pub async fn start() -> Result<(), StartupError> {
     let cfg = Configuration::get_config()?;
 
     let db_pool = MainDbPool::get_pool(&cfg)?;
@@ -25,8 +59,8 @@ pub async fn start() -> std::io::Result<()> {
             .data(db_pool.clone())
             .data(github_info)
             .data(cfg)
-            .data(jwt_secret)
-            .wrap(CookieSession::signed(&cookie_secret).secure(false))
+            .data(Arc::new(jwt_secret))
+            .wrap(CookieSession::signed(&[0; 32]).secure(false))
             .wrap(middleware::Logger::default())
             .wrap(
                 Cors::new()
@@ -37,5 +71,6 @@ pub async fn start() -> std::io::Result<()> {
     })
     .bind("127.0.0.1:9000")?
     .run()
-    .await
+    .await?
+    .ok()
 }

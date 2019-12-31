@@ -20,6 +20,7 @@ impl Configuration {
             .to_err_string()?
             .merge(Environment::with_prefix("BC"))
             .to_err_string()?
-            .try_into()?
+            .try_into()
+            .to_err_string()?
     }
 }

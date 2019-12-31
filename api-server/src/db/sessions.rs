@@ -1,11 +1,14 @@
+use diesel::prelude::*;
+use futures::future::TryFutureExt;
+use uuid::Uuid;
+
+use api_server_macros::{dynamic_dependency, Dependency};
+
 use crate::main_db_conn::MainDbPool;
 use crate::models::{GitHubLoginSessionInformation, NewGitHubLoginSessionInformation};
 use crate::utils::*;
-use api_server_macros::{dynamic_dependency, Dependency};
-use diesel::prelude::*;
-use uuid::Uuid;
 
-#[dynamic_dependency(RealSessionRepository)]
+//#[dynamic_dependency(RealSessionRepository)]
 pub trait SessionRepository {
     // Should create a new session for a github login
     fn create_session_for_github_login(
@@ -24,6 +27,20 @@ pub trait SessionRepository {
     ) -> Result<Option<GitHubLoginSessionInformation>, String>;
 
     fn delete_login_session(&self, id: Uuid) -> Result<(), String>;
+}
+
+impl ::actix_web::FromRequest for Box<dyn SessionRepository> {
+    type Error = ::actix_web::Error;
+    type Future =
+        ::futures::future::MapOk<::futures::future::Ready<Result<Self, Self::Error>>, ???>;
+    type Config = ();
+
+    fn from_request(
+        req: &::actix_web::HttpRequest,
+        payload: &mut actix_web::dev::Payload,
+    ) -> Self::Future {
+        RealSessionRepository::from_request(&req, payload).map_ok(|dep| Box::new(dep))
+    }
 }
 
 #[derive(Dependency)]

@@ -9,11 +9,15 @@ embed_migrations!("migrations");
 pub type MainDbPool = r2d2::Pool<ConnectionManager<diesel::PgConnection>>;
 
 pub trait MainDbPoolCtor {
-    fn get_pool(cfg: &Configuration) -> Result<Self, String>;
+    type Item;
+
+    fn get_pool(cfg: &Configuration) -> Result<Self::Item, String>;
 }
 
 impl MainDbPoolCtor for MainDbPool {
-    fn get_pool(cfg: &Configuration) -> Result<MainDbPool, String> {
+    type Item = MainDbPool;
+
+    fn get_pool(cfg: &Configuration) -> Result<Self::Item, String> {
         let manager = ConnectionManager::<diesel::PgConnection>::new(&cfg.database_url);
         let pool = r2d2::Pool::builder().build(manager).to_err_string()?;
 

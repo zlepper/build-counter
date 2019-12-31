@@ -1,16 +1,16 @@
 use actix_service::ServiceFactory;
 use actix_web::body::MessageBody;
 use actix_web::dev::{ServiceRequest, ServiceResponse};
-use actix_web::App;
 use actix_web::Error;
+use actix_web::{web, App};
 use oauth2::reqwest::http_client;
 use oauth2::{AuthorizationCode, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, TokenResponse};
 use url::Url;
 
+use crate::config::Configuration;
 use crate::db::sessions::SessionRepository;
 use crate::db::users::UserRepository;
 use crate::error_response::Errors;
-use crate::frontend_url::FrontendUrl;
 use crate::github_client_info::GitHubClientInfo;
 use crate::jwt::Jwt;
 use crate::jwt_secret::SecretStorage;
@@ -58,9 +58,9 @@ async fn start_login(
     session: Session,
     repo: Box<dyn SessionRepository>,
     return_url: String,
-    frontend_url: FrontendUrl,
+    cfg: web::Data<Configuration>,
 ) -> Result<Redirect, Errors> {
-    let valid_return = is_valid_return_url(&*frontend_url, &return_url).map_err(|e| {
+    let valid_return = is_valid_return_url(&cfg.frontend_url, &return_url).map_err(|e| {
         error!("{}", e);
         Errors::BadRequest(e)
     })?;

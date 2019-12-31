@@ -1,11 +1,13 @@
-use crate::jwt_secret::SecretStorage;
-use crate::models::User;
-use crate::utils::*;
+use actix_http::error::ErrorUnauthorized;
+use actix_http::http::HeaderName;
 use actix_http::{Error, Payload};
 use actix_web::{FromRequest, HttpRequest};
 use futures::future::{err, ok, Ready};
 use uuid::Uuid;
-use actix_http::http::HeaderName;
+
+use crate::jwt_secret::SecretStorage;
+use crate::models::User;
+use crate::utils::*;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -15,6 +17,7 @@ pub struct Claims {
 
 const AUTHORIZATION_HEADER_NAME: &str = "Authorization";
 
+#[derive(Clone, Debug)]
 pub struct Jwt {
     pub user_id: Uuid,
 }
@@ -44,15 +47,56 @@ impl FromRequest for Jwt {
     type Config = ();
 
     fn from_request(req: &HttpRequest, payload: &mut Payload) -> Self::Future {
-        let jwt_secret = req.app_data::<SecretStorage<Jwt>>().expect("JWT secret was not available");
+        let jwt_secret = req
+            .app_data::<SecretStorage<Jwt>>()
+            .expect("JWT secret was not available");
 
         let auth_header = req.headers().get(HeaderName::AUTHORIZATION);
 
         let split_header = match auth_header {
-            None =>
+            None => return err(ErrorUnauthorized("No authorization token was provided")),
+            Some(a) => a.to_str()?.split(" ").next_tuple(),
+        };
+
+        let (scheme, token) = match split_header {
+            None => {
+                error!("Invalid authorization header: {}", auth_header.unwrap());
+                return err(ErrorUnauthorized("Invalid authorization header"));
+            }
+            Some(t) => t,
+        };
+        if scheme != "Bearer" {
+            error!("Invalid auth scheme: {}", scheme);
+            return err(ErrorUnauthorized("Invalid auth scheme"));
         }
 
-        unimplemented!()
+        let claims = jsonwebtoken::decode::<Claims>(
+            token,
+            &*jwt_secret,
+            &jsonwebtoken::Validation::default(),
+        );
+
+        let td = match claims {
+            Err(e) => {
+                error!("Failed to decode jwt token: {}", e);
+                return err(ErrorUnauthorized(format!("Invalid jwt token: {}", e)));
+            }
+            Ok(td) => td,
+        };
+
+        let user_id = Uuid::parse_str(&td.claims.sub);
+        match user_id {
+            Err(e) => {
+                error!(
+                    "Failed to parse user id in jwt. This is a critical error: {}",
+                    e
+                );
+                err(ErrorUnauthorized(
+                    "Failed to parse user id in jwt. This should probably be reported as a bug.",
+                ))
+            }
+            Ok(id) => ok(Jwt { user_id: id }),
+        }
     }
     //    type Error = Errors;
     //
